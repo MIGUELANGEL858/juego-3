@@ -14,7 +14,219 @@ vsgvfbgdbdghbrrrr
   </style>
 </head>
 <body>
-  <h1>¡El fondo es negro!</h1>
-  <p>Este es un ejemplo de una página con fondo negro.</p>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      overflow: hidden;
+    }
+    #gameCanvas {
+      background: #111;
+      display: block;
+      margin: 0 auto;
+      border: 2px solid #fff;
+    }
+    #score {
+      color: #fff;
+      font-family: Arial, sans-serif;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 22px;
+    }
+    #gameOver {
+      color: #fff;
+      font-family: Arial, sans-serif;
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 36px;
+      display: none;
+      text-align: center;
+    }
+    #restartBtn {
+      display: none;
+      position: absolute;
+      top: 52%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 12px 30px;
+      font-size: 18px;
+      background: #1a1a1a;
+      color: #fff;
+      border: 2px solid #fff;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #restartBtn:hover {
+      background: #333;
+    }
+  </style>
+</head>
+<body>
+  <div id="score">Puntuación: 0</div>
+  <div id="gameOver">¡Has perdido!<br>Puntuación final: <span id="finalScore">0</span></div>
+  <button id="restartBtn">Reiniciar</button>
+  <canvas id="gameCanvas" width="480" height="640"></canvas>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDiv = document.getElementById('score');
+    const gameOverDiv = document.getElementById('gameOver');
+    const finalScoreSpan = document.getElementById('finalScore');
+    const restartBtn = document.getElementById('restartBtn');
+
+    // Nave
+    const ship = {
+      width: 40,
+      height: 40,
+      x: canvas.width / 2 - 20,
+      y: canvas.height - 70,
+      speed: 6,
+      dx: 0
+    };
+
+    // Asteroides
+    const asteroids = [];
+    let asteroidTimer = 0;
+
+    let running = true;
+    let score = 0;
+
+    function drawShip() {
+      ctx.save();
+      ctx.translate(ship.x + ship.width/2, ship.y + ship.height/2);
+      ctx.beginPath();
+      ctx.moveTo(0, -ship.height/2); // Punta
+      ctx.lineTo(-ship.width/2, ship.height/2);
+      ctx.lineTo(ship.width/2, ship.height/2);
+      ctx.closePath();
+      ctx.fillStyle = '#00f6ff';
+      ctx.shadowColor = '#0ff';
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawAsteroid(ast) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(ast.x, ast.y, ast.radius, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fillStyle = '#888';
+      ctx.shadowColor = '#555';
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function newAsteroid() {
+      const radius = Math.random() * 18 + 18;
+      const x = Math.random() * (canvas.width - 2*radius) + radius;
+      const speed = Math.random() * 2.5 + 2.2 + (score/100);
+      asteroids.push({x, y: -radius, radius, speed});
+    }
+
+    function moveShip() {
+      ship.x += ship.dx;
+      // Limita dentro del canvas
+      if (ship.x < 0) ship.x = 0;
+      if (ship.x + ship.width > canvas.width) ship.x = canvas.width - ship.width;
+    }
+
+    function moveAsteroids() {
+      for (let ast of asteroids) {
+        ast.y += ast.speed;
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawShip();
+      for (let ast of asteroids) {
+        drawAsteroid(ast);
+      }
+    }
+
+    function collision(a, b) {
+      // a: nave, b: asteroide
+      const distX = Math.abs((a.x + a.width/2) - b.x);
+      const distY = Math.abs((a.y + a.height/2) - b.y);
+      const distance = Math.sqrt(distX * distX + distY * distY);
+      return distance < b.radius + Math.max(a.width, a.height)/2 - 6;
+    }
+
+    function checkCollisions() {
+      for (let ast of asteroids) {
+        if (collision(ship, ast)) {
+          running = false;
+          gameOverDiv.style.display = 'block';
+          finalScoreSpan.textContent = score;
+          restartBtn.style.display = 'block';
+        }
+      }
+    }
+
+    function removeOldAsteroids() {
+      for (let i = asteroids.length-1; i >= 0; i--) {
+        if (asteroids[i].y - asteroids[i].radius > canvas.height) {
+          asteroids.splice(i, 1);
+          score += 1;
+        }
+      }
+    }
+
+    function gameLoop() {
+      if (!running) return;
+      moveShip();
+      moveAsteroids();
+      draw();
+      checkCollisions();
+      removeOldAsteroids();
+
+      asteroidTimer++;
+      if (asteroidTimer > 25 - Math.min(20, Math.floor(score/10))) {
+        newAsteroid();
+        asteroidTimer = 0;
+      }
+
+      scoreDiv.textContent = 'Puntuación: ' + score;
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Controles
+    document.addEventListener('keydown', (e) => {
+      if (!running) return;
+      if (e.key === 'ArrowLeft' || e.key === 'a') ship.dx = -ship.speed;
+      if (e.key === 'ArrowRight' || e.key === 'd') ship.dx = ship.speed;
+    });
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a') ship.dx = 0;
+      if (e.key === 'ArrowRight' || e.key === 'd') ship.dx = 0;
+    });
+
+    restartBtn.addEventListener('click', () => {
+      // Reiniciar juego
+      asteroids.length = 0;
+      ship.x = canvas.width / 2 - 20;
+      score = 0;
+      running = true;
+      asteroidTimer = 0;
+      gameOverDiv.style.display = 'none';
+      restartBtn.style.display = 'none';
+      gameLoop();
+    });
+
+    // Iniciar
+    gameLoop();
+  </script>
 </body>
 </html>
